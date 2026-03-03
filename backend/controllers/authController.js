@@ -1,17 +1,81 @@
-const Users = require('../models/user')
-const bcrypt = require('bcrypt')
+const Users = require("../models/user");
+const Technicians = require("../models/technician");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 exports.register = async (req, res) => {
   const { name, employeeId, email, password, role, shop } = req.body;
   try {
-      const employee = await Users.findOne({ employeeId });
-      if (employee) {
-          return res.status(400).json({message:"Employee already exsits"})
-      }
-      const newEmloyee = await Users.create({
-        name,employeeId,email,password:(await bcrypt.hash(password,10)),role,shop
-      })
-      res.status(200).json({message:"Employee created",employee:newEmloyee})
+    const employee = await Users.findOne({ employeeId });
+    if (employee) {
+      return res.status(400).json({ message: "Employee already exsits" });
+    }
+    const newEmloyee = await Users.create({
+      name,
+      employeeId,
+      email,
+      password: await bcrypt.hash(password, 10),
+      role,
+      shop,
+    });
+    const token = jwt.sign({ userId: employeeId }, process.env.secret_key, {
+      expiresIn: "7d",
+    });
+    res.status(200).json({
+      message: "Employee created",
+      employee: newEmloyee,
+      token: token,
+    });
   } catch (error) {
-      console.log(error);
+    console.log(error);
   }
 };
+
+exports.login = async (req, res) => {
+  const { employeeId, email, password } = req.body;
+  try {
+    if (!employeeId || !email || !password) {
+      return res.status(400).json({ message: "mandatory fields " });
+    }
+    const employee = await Users.findOne({ employeeId });
+    if (!employee) {
+      return res.status(400).json({ message: "User not found " });
+    } else {
+      if (await bcrypt.compare(password, employee.password)) {
+        const token = jwt.sign({ userId: employeeId }, process.env.secret_key, {
+          expiresIn: "7d",
+        });
+        return res.status(200).json({ employee: employee, token: token });
+      }
+      return res.status(400).json({ message: "password is incorrect" });
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.technician = async (req, res) => {
+  const { zone, section, area, designation } = req.body;
+  if (!zone || !section || !area || !designation) {
+    return res.status(400).json({ message: "Provide all details" });
+  }
+  try {
+    const technicianDetails = await Technicians.create({
+      zone,
+      section,
+      area,
+      designation,
+    });
+    res.status(200).json({ details: technicianDetails });
+  } catch (error) {
+    console.log(error.code);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Invalid Section" });
+    }
+  }
+};
+
+
+exports.Leave = async (req, res) => {
+  
+}
+

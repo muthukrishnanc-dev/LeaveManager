@@ -1,7 +1,13 @@
-const { Schema,model } = require("mongoose");
+const { Schema, model, default: mongoose } = require("mongoose");
 
 const technicianSchema = new Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+      requied: true,
+      unique: true,
+    },
     zone: { type: String, required: true },
     section: { type: String, required: true },
     area: { type: String, enum: ["RH", "LH", "BOTH"], required: true },
@@ -9,10 +15,9 @@ const technicianSchema = new Schema(
       type: String,
       enum: ["RN_EMPLOYEE", "NAPS", "CL"],
       required: true,
-        },
-    leave:{type:Number,default:1}
     },
-  
+  },
+
   { timestamps: true },
 );
 
