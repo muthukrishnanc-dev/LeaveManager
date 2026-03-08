@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const { google } = require("googleapis");
-const key = require("../leave-managing-system-7ec617f4a270.json");
+const key = require("../leave-managing-system-2f8e2945fd6e.json");
 const auth = new google.auth.JWT(key.client_email, null, key.private_key, [
   "https://www.googleapis.com/auth/calendar",
 ]);
