@@ -1,8 +1,10 @@
 const Users = require("../models/user");
 const Technicians = require("../models/technician");
 const Leave = require("../models/leave");
+const { createEvent } = require("../utils/calender");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+
 exports.register = async (req, res) => {
   const { name, employeeId, email, password, role, shop } = req.body;
   try {
@@ -88,15 +90,22 @@ exports.technician = async (req, res) => {
 exports.Leave = async (req, res) => {
   const { startDate, endDate, reason } = req.body;
   try {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const createLeave = await Leave.create({
-      userId: req.user.userId,
-      startDate: start,
-      endDate: end,
-      reason,
+    const leave = await Leave.find({
+      startDate: { $lte: endDate },
+      endDate: { $gte: startDate },
     });
-    res.json(createLeave);
+    if (leave.length < 3) {
+      const createLeave = await Leave.create({
+        userId: req.user.userId,
+        startDate,
+        endDate,
+        reason,
+        status: "Pending",
+      });
+      return res.json(createLeave);
+    }
+    res.json("sorry");
+    // console.log(leave);
   } catch (error) {
     console.log(error);
   }
@@ -105,9 +114,35 @@ exports.Leave = async (req, res) => {
 exports.admin = async (req, res) => {
   try {
     const users = await Technicians.find().populate("userId");
-    res.json(users);
+    const leave = await Leave.find();
+    // res.json({ users, leave });
   } catch (error) {
     console.log(error);
   }
 };
-// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OWE1OTJjMzIxMzYwMDkzNDY3YWExYTkiLCJyb2xlIjoiVGVjaG5pY2lhbiIsImlhdCI6MTc3MjYyNjc0NiwiZXhwIjoxNzczMjMxNTQ2fQ.Xq_UzKPzm33xw1hKyH514DVsg0mwYMApQ4GM6MEB7cs
+
+exports.approve = async (req, res) => {
+  const { userId, status } = req.body;
+  try {
+    const leaveCount = await Leave.findOne({ userId: userId });
+    const leave = await Leave.findOneAndUpdate(
+      { userId: userId },
+      {
+        status: status,
+        totalLeave:
+          leaveCount.totalLeave -
+          (leaveCount.endDate - leaveCount.startDate) / (1000 * 60 * 60 * 24),
+      },
+      { new: true },
+    ).populate("userId");
+    await createEvent(
+      leave.startDate,
+      leave.endDate,
+      leave.userId.name,
+      leave.userId.employeeId,
+    );
+    res.json(leave);
+  } catch (error) {
+    console.log(error);
+  }
+};
